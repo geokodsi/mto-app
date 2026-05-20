@@ -21,9 +21,9 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Features</a>
               <Link href="/login" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Sign in</Link>
-              <Link href="/signup" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-                Get started free
-              </Link>
+              <a href="mailto:george@itaegypt.com" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+                Request access
+              </a>
             </div>
             <button className="md:hidden p-1" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X size={22} /> : <Menu size={22} />}
@@ -34,9 +34,9 @@ export default function LandingPage() {
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
             <a href="#features" className="block text-sm text-gray-600 py-1">Features</a>
             <Link href="/login" className="block text-sm text-gray-600 py-1">Sign in</Link>
-            <Link href="/signup" className="block bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium text-center">
-              Get started free
-            </Link>
+            <a href="mailto:george@itaegypt.com" className="block bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium text-center">
+              Request access
+            </a>
           </div>
         )}
       </nav>
@@ -56,9 +56,9 @@ export default function LandingPage() {
             MTO automates candidate screening with AI conversations, intelligent scoring, and a visual pipeline — so your team only talks to the best fits.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <Link href="/signup" className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
-              Start for free <ArrowRight size={17} />
-            </Link>
+            <a href="mailto:george@itaegypt.com" className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+              Request access <ArrowRight size={17} />
+            </a>
             <Link href="/login" className="w-full sm:w-auto border border-gray-200 text-gray-700 px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-gray-50 transition-colors text-center">
               Sign in
             </Link>
@@ -163,10 +163,10 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-10 sm:p-16 text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to screen smarter?</h2>
-            <p className="text-indigo-100 text-lg mb-8 max-w-lg mx-auto">Set up your first AI-screened job in under 5 minutes. No credit card required.</p>
-            <Link href="/signup" className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-indigo-50 transition-colors">
-              Get started free <ArrowRight size={17} />
-            </Link>
+            <p className="text-indigo-100 text-lg mb-8 max-w-lg mx-auto">MTO is currently invite-only. Request access to get started.</p>
+            <a href="mailto:george@itaegypt.com" className="inline-flex items-center gap-2 bg-white text-indigo-700 px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-indigo-50 transition-colors">
+              Request access <ArrowRight size={17} />
+            </a>
           </div>
         </div>
       </section>
@@ -183,7 +183,7 @@ export default function LandingPage() {
           <p className="text-sm text-gray-400">© 2026 MTO. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <Link href="/login" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">Sign in</Link>
-            <Link href="/signup" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">Sign up</Link>
+            <a href="mailto:george@itaegypt.com" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">Request access</a>
           </div>
         </div>
       </footer>

@@ -87,7 +87,12 @@ export default function SignupPage() {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create your account</h1>
-          <p className="text-gray-500 mb-8">Set up MTO for your team in under 2 minutes</p>
+          <p className="text-gray-500 mb-4">Set up MTO for your team in under 2 minutes</p>
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-xl mb-6">
+            MTO is currently invite-only. Contact us at{' '}
+            <a href="mailto:george@itaegypt.com" className="font-medium underline underline-offset-2">george@itaegypt.com</a>
+            {' '}to get access.
+          </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
