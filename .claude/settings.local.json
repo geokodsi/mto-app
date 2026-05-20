@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__get_logs",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "PowerShell(cd \"C:\\\\Users\\\\geoko\\\\recruitai-app\\\\my-app\"; $job = Start-Process -FilePath \"npm\" -ArgumentList \"run dev\" -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 5; $job.Id)",
+      "PowerShell(Out-Null *)",
+      "PowerShell(Start-Sleep -Seconds 5; Invoke-WebRequest -Uri \"http://localhost:3000\" -UseBasicParsing -TimeoutSec 5 | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/signup\" -UseBasicParsing -TimeoutSec 5 | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(Get-Process *)"
+    ]
+  }
+}
