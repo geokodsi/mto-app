@@ -48,7 +48,10 @@ Rules:
     const done = text.includes('[SCREENING_COMPLETE]')
     const cleanText = text.replace('[SCREENING_COMPLETE]', '').trim()
 
-    return NextResponse.json({ message: cleanText, done })
+    const totalQuestions = job.questions.length
+    const questionNumber = Math.min(messages.filter((m: any) => m.role === 'assistant').length + 1, totalQuestions)
+
+    return NextResponse.json({ message: cleanText, done, questionNumber, totalQuestions })
   } catch (err: any) {
     console.error('Anthropic error:', err?.message || err)
     return NextResponse.json({ error: err?.message || 'AI service error' }, { status: 502 })
