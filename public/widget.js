@@ -1,8 +1,10 @@
 (function () {
-  var jobId = document.currentScript.getAttribute('data-job-id');
-  var color = document.currentScript.getAttribute('data-color') || '#6366f1';
-  var jobTitle = document.currentScript.getAttribute('data-job-title') || '';
-  var baseUrl = document.currentScript.src.replace('/widget.js', '');
+  var scriptEl = document.currentScript || document.querySelector('script[data-job-id]');
+  if (!scriptEl) return;
+  var jobId = scriptEl.getAttribute('data-job-id');
+  var color = scriptEl.getAttribute('data-color') || '#6366f1';
+  var jobTitle = scriptEl.getAttribute('data-job-title') || '';
+  var baseUrl = scriptEl.src.replace('/widget.js', '');
 
   function getEmoji(title) {
     var t = (title || '').toLowerCase();

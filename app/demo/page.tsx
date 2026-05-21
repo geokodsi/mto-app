@@ -1,22 +1,11 @@
 'use client'
-import { useEffect } from 'react'
+import Script from 'next/script'
 import { MapPin, Clock, Briefcase, DollarSign, CheckCircle } from 'lucide-react'
 
 const JOB_ID = 'a8aa71c8-9b4c-46ff-9161-226f95c971bf'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || ''
 
 export default function DemoPage() {
-  useEffect(() => {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-    const existing = document.querySelector('script[data-job-id]')
-    if (existing) return
-    const script = document.createElement('script')
-    script.src = `${appUrl}/widget.js`
-    script.setAttribute('data-job-id', JOB_ID)
-    script.setAttribute('data-job-title', 'Senior Developer')
-    script.setAttribute('data-color', '#2563eb')
-    document.body.appendChild(script)
-    return () => { script.remove() }
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,6 +156,14 @@ export default function DemoPage() {
           <span>Screening powered by <a href="/" className="text-blue-500 hover:underline">MTO</a></span>
         </div>
       </footer>
+
+      <Script
+        src={`${APP_URL}/widget.js`}
+        strategy="lazyOnload"
+        data-job-id={JOB_ID}
+        data-job-title="Senior Developer"
+        data-color="#2563eb"
+      />
     </div>
   )
 }
