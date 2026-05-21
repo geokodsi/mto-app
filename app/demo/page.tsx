@@ -1,11 +1,28 @@
 'use client'
-import Script from 'next/script'
+import { useEffect } from 'react'
 import { MapPin, Clock, Briefcase, DollarSign, CheckCircle } from 'lucide-react'
 
 const JOB_ID = 'a8aa71c8-9b4c-46ff-9161-226f95c971bf'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || ''
 
 export default function DemoPage() {
+  useEffect(() => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    ;(window as any).mtoWidgetConfig = {
+      jobId: JOB_ID,
+      color: '#2563eb',
+      jobTitle: 'Senior Developer',
+      baseUrl: appUrl,
+    }
+    const script = document.createElement('script')
+    script.src = `${appUrl}/widget.js`
+    document.body.appendChild(script)
+    return () => {
+      script.remove()
+      delete (window as any).mtoWidgetConfig
+      document.getElementById('mto-btn')?.remove()
+      document.getElementById('mto-modal')?.remove()
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -157,13 +174,6 @@ export default function DemoPage() {
         </div>
       </footer>
 
-      <Script
-        src={`${APP_URL}/widget.js`}
-        strategy="lazyOnload"
-        data-job-id={JOB_ID}
-        data-job-title="Senior Developer"
-        data-color="#2563eb"
-      />
     </div>
   )
 }

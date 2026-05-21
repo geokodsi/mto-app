@@ -1,10 +1,11 @@
 (function () {
+  var cfg = window.mtoWidgetConfig || {};
   var scriptEl = document.currentScript || document.querySelector('script[data-job-id]');
-  if (!scriptEl) return;
-  var jobId = scriptEl.getAttribute('data-job-id');
-  var color = scriptEl.getAttribute('data-color') || '#6366f1';
-  var jobTitle = scriptEl.getAttribute('data-job-title') || '';
-  var baseUrl = scriptEl.src.replace('/widget.js', '');
+  var jobId = cfg.jobId || (scriptEl && scriptEl.getAttribute('data-job-id'));
+  var color = cfg.color || (scriptEl && scriptEl.getAttribute('data-color')) || '#6366f1';
+  var jobTitle = cfg.jobTitle || (scriptEl && scriptEl.getAttribute('data-job-title')) || '';
+  var baseUrl = cfg.baseUrl || (scriptEl && scriptEl.src ? scriptEl.src.replace('/widget.js', '') : window.location.origin);
+  if (!jobId) return;
 
   function getEmoji(title) {
     var t = (title || '').toLowerCase();
