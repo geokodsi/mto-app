@@ -1,51 +1,7 @@
-'use client'
-import { useState } from 'react'
-import { supabase } from '../../../lib/supabase'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react'
+import { ArrowRight, Lock, CheckCircle } from 'lucide-react'
 
 export default function SignupPage() {
-  const [fullName, setFullName] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
-    if (signUpError) {
-      setError(signUpError.message)
-      setLoading(false)
-      return
-    }
-
-    if (data.user) {
-      const { data: company } = await supabase
-        .from('companies')
-        .insert({ name: companyName })
-        .select()
-        .single()
-
-      if (company) {
-        await supabase.from('profiles').insert({
-          id: data.user.id,
-          company_id: company.id,
-          full_name: fullName,
-          role: 'owner',
-        })
-      }
-      router.push('/dashboard')
-    }
-  }
-
   return (
     <div className="min-h-screen flex">
       {/* Left panel */}
@@ -58,10 +14,10 @@ export default function SignupPage() {
           <span className="text-white text-xl font-bold tracking-tight">MTO</span>
         </div>
         <div className="relative space-y-5">
-          <h2 className="text-white text-2xl font-bold">Start screening smarter today.</h2>
+          <h2 className="text-white text-2xl font-bold">AI-powered candidate screening.</h2>
           {[
-            'AI conversations with every applicant',
-            'Custom scoring against your criteria',
+            'Conversational AI interviews with every applicant',
+            'Custom scoring against your pass criteria',
             'Visual pipeline with full transcripts',
             'Embed on any career page in seconds',
           ].map(item => (
@@ -78,95 +34,33 @@ export default function SignupPage() {
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-8 bg-white">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-10">
+        <div className="w-full max-w-md text-center">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center justify-center gap-2 mb-10">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">M</span>
             </div>
             <span className="text-xl font-bold">MTO</span>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create your account</h1>
-          <p className="text-gray-500 mb-4">Set up MTO for your team in under 2 minutes</p>
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-xl mb-6">
-            MTO is currently invite-only. Contact us at{' '}
-            <a href="mailto:george@itaegypt.com" className="font-medium underline underline-offset-2">george@itaegypt.com</a>
-            {' '}to get access.
+          {/* Lock icon */}
+          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Lock size={28} className="text-indigo-600" />
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Your name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50/50 focus:bg-white transition-all"
-                  placeholder="Jane Smith"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Company name</label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={e => setCompanyName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50/50 focus:bg-white transition-all"
-                  placeholder="Acme Corp"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Work email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50/50 focus:bg-white transition-all"
-                placeholder="you@company.com"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50/50 focus:bg-white transition-all"
-                  placeholder="Min. 8 characters"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">MTO is invite-only</h1>
+          <p className="text-gray-500 leading-relaxed mb-8 max-w-sm mx-auto">
+            We&apos;re currently in early access. Send us a quick message and we&apos;ll get you set up personally.
+          </p>
 
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-xl">
-                {error}
-              </div>
-            )}
+          <a
+            href="mailto:george@itaegypt.com?subject=MTO Access Request&body=Hi, I'd like to request access to MTO."
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-7 py-3.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors"
+          >
+            Request access <ArrowRight size={16} />
+          </a>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 mt-2"
-            >
-              {loading ? 'Creating account…' : <><span>Create account</span><ArrowRight size={16} /></>}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="mt-8 text-sm text-gray-500">
             Already have an account?{' '}
             <Link href="/login" className="text-indigo-600 font-medium hover:underline">
               Sign in
