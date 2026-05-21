@@ -363,4 +363,12 @@
   document.getElementById('mto-input').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') handleInput();
   });
+
+  window.mtoOpenWidget = function() {
+    isOpen = true;
+    modal.style.display = 'flex';
+    if (messages.length === 0) {
+      setTimeout(() => addMessage('Hi! I am here to learn more about you for this role. What is your full name?', 'ai'), 300);
+    }
+  };
 })();
