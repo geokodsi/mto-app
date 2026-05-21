@@ -129,7 +129,7 @@ export default function DemoPage() {
             </p>
             <button
               onClick={() => {
-                const btn = document.getElementById('mto-open-btn') as HTMLElement | null
+                const btn = document.getElementById('mto-btn') as HTMLElement | null
                 if (btn) btn.click()
               }}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
