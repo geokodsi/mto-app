@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
-import { Users, Briefcase, TrendingUp, Calendar, Plus, ArrowRight } from 'lucide-react'
+import { Users, Briefcase, TrendingUp, Calendar, Plus, ArrowRight, Code2, Copy, Check } from 'lucide-react'
 
 function useCountUp(target: number, duration = 900) {
   const [value, setValue] = useState(0)
@@ -30,7 +30,19 @@ function AnimatedStat({ value, suffix = '' }: { value: number; suffix?: string }
 export default function DashboardPage() {
   const [profile, setProfile] = useState<{ full_name: string; company_name: string } | null>(null)
   const [stats, setStats] = useState({ jobs: 0, screened: 0, passed: 0, booked: 0 })
+  const [jobList, setJobList] = useState<{ id: string; title: string }[]>([])
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://yourapp.com')
+
+  function copyEmbed(job: { id: string; title: string }) {
+    const code = `<script src="${appUrl}/widget.js" data-job-id="${job.id}" data-job-title="${job.title}"></script>`
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedId(job.id)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
 
   useEffect(() => {
     async function load() {
@@ -48,10 +60,12 @@ export default function DashboardPage() {
 
       const { data: jobs } = await supabase
         .from('jobs')
-        .select('id')
+        .select('id, title')
         .eq('company_id', p.company_id)
+        .order('created_at', { ascending: false })
 
       const jobIds = (jobs || []).map((j: any) => j.id)
+      setJobList(jobs || [])
       let screened = 0, passed = 0, booked = 0
 
       if (jobIds.length > 0) {
@@ -122,7 +136,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div>
+        <div className="mb-8 sm:mb-10">
           <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Quick actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link
@@ -152,6 +166,51 @@ export default function DashboardPage() {
               <ArrowRight size={17} className="ml-auto text-gray-300 group-hover:text-purple-500 flex-shrink-0 transition-colors" />
             </Link>
           </div>
+        </div>
+
+        {/* Embed codes */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Code2 size={16} className="text-gray-400" />
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Embed on your website</h2>
+          </div>
+
+          {!loading && jobList.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500">Create a job first to get your embed code</p>
+              <Link href="/dashboard/jobs/new" className="mt-3 inline-flex items-center gap-1.5 text-sm text-indigo-600 font-medium hover:underline">
+                <Plus size={14} /> Create a job
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {jobList.map(job => {
+                const code = `<script src="${appUrl}/widget.js" data-job-id="${job.id}" data-job-title="${job.title}"></script>`
+                const isCopied = copiedId === job.id
+                return (
+                  <div key={job.id} className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{job.title}</p>
+                      <button
+                        onClick={() => copyEmbed(job)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          isCopied
+                            ? 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                        }`}
+                      >
+                        {isCopied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy code</>}
+                      </button>
+                    </div>
+                    <code className="block text-xs bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl px-4 py-3 text-gray-500 dark:text-gray-400 font-mono break-all select-all">
+                      {code}
+                    </code>
+                  </div>
+                )
+              })}
+              <p className="text-xs text-gray-400 dark:text-gray-500 pt-1">Paste this snippet on your careers page — the AI screening widget will appear automatically.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
