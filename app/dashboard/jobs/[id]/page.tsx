@@ -166,19 +166,33 @@ export default function JobPipelinePage() {
       </div>
 
       {/* Embed code */}
-      <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-5 mb-7 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Widget embed code</p>
+      <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-6 mb-7 shadow-sm">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Embed on your website</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Paste this code on your careers page to start screening candidates automatically</p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-950 rounded-xl flex items-center justify-center">
+              <Copy size={16} className="text-indigo-500" />
+            </div>
+          </div>
+        </div>
+        <div className="relative">
+          <code className="block text-xs bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl px-4 py-4 text-gray-600 dark:text-gray-300 select-all break-all pr-24 font-mono leading-relaxed">
+            {embedCode}
+          </code>
           <button
             onClick={copyEmbed}
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              copied
+                ? 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+            }`}
           >
-            {copied ? <><Check size={13} className="text-green-500" /> Copied!</> : <><Copy size={13} /> Copy</>}
+            {copied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy code</>}
           </button>
         </div>
-        <code className="block text-xs bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl px-4 py-3 text-gray-500 dark:text-gray-400 select-all break-all">
-          {embedCode}
-        </code>
       </div>
 
       {/* Kanban */}
