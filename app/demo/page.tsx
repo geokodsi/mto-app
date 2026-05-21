@@ -24,6 +24,17 @@ export default function DemoPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const btn = document.getElementById('apply-now-btn')
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if ((window as any).mtoOpenWidget) {
+          (window as any).mtoOpenWidget()
+        }
+      })
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Nav */}
@@ -134,7 +145,7 @@ export default function DemoPage() {
               Click the button below to start a quick AI-powered screening — takes about 3 minutes.
             </p>
             <button
-              onClick={() => { (window as any).mtoOpenWidget?.() }}
+              id="apply-now-btn"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
             >
               Apply now
