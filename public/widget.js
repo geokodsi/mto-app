@@ -1,4 +1,5 @@
 (function () {
+  console.log('MTO widget loaded');
   var cfg = window.mtoWidgetConfig || {};
   var scriptEl = document.currentScript || document.querySelector('script[data-job-id]');
   var jobId = cfg.jobId || (scriptEl && scriptEl.getAttribute('data-job-id'));
@@ -371,4 +372,5 @@
       setTimeout(() => addMessage('Hi! I am here to learn more about you for this role. What is your full name?', 'ai'), 300);
     }
   };
+  console.log('mtoOpenWidget ready:', typeof window.mtoOpenWidget);
 })();
