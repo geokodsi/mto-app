@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   console.log('MTO widget loaded');
   var cfg = window.mtoWidgetConfig || {};
   var scriptEl = document.currentScript || document.querySelector('script[data-job-id]');
@@ -314,7 +314,7 @@
       candidateName = text;
       step = 'email';
       setTimeout(function () {
-        addMessage("Nice to meet you, " + candidateName + "! What’s your email address?", ‘ai’);
+        addMessage('Nice to meet you, ' + candidateName + '! What\'s your email address?', 'ai');
       }, 320);
     } else if (step === 'email') {
       candidateEmail = text;
@@ -347,7 +347,7 @@
       modal.classList.add('mto-open');
       if (messages.length === 0) {
         setTimeout(function () {
-          addMessage("Hi! I’m here to learn more about you for this role. What’s your full name?", ‘ai’);
+          addMessage("Hi! I'm here to learn more about you for this role. What's your full name?", 'ai');
         }, 320);
       }
     } else {
