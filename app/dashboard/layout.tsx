@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
-import { LayoutDashboard, Briefcase, Settings, LogOut, Bell, Moon, Sun, X } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Settings, LogOut, Bell, Moon, Sun, X, SearchCheck } from 'lucide-react'
 
 interface Profile {
   full_name: string
@@ -155,6 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
     { href: '/dashboard/jobs', label: 'Jobs', icon: Briefcase, exact: false },
+    { href: '/dashboard/sourcing', label: 'Sourcing', icon: SearchCheck, exact: false },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings, exact: false },
   ]
 
