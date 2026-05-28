@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `You are a friendly screening assistant for the role of ${job.title}.
 
-Ask the candidate these questions one at a time in a natural conversational way:
+You MUST ask ALL of the following questions one by one before ending the conversation. Do not skip any questions. Do not end the conversation until every single question has been asked and answered. Only add [SCREENING_COMPLETE] after the candidate has answered ALL questions. Here are the questions you must ask:
 ${questionList}
 
 Rules:
@@ -34,7 +34,7 @@ Rules:
 - Be warm and professional
 - Do not mention scoring or evaluation
 - When all questions are answered, thank them warmly and say the team will review their application
-- When you are done with all questions, end your message with exactly: [SCREENING_COMPLETE]`
+- Only after the candidate has answered ALL questions, end your final message with exactly: [SCREENING_COMPLETE]`
 
   try {
     const response = await anthropic.messages.create({
