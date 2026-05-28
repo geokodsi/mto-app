@@ -2,10 +2,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { useParams } from 'next/navigation'
-import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check } from 'lucide-react'
+import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check, Clock, Trash2 } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+}
+
+function timeAgo(dateString: string) {
+  const mins = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
 const AVATAR_COLORS = [
@@ -76,6 +85,8 @@ export default function JobPipelinePage() {
   const [selected, setSelected] = useState<any>(null)
   const [copied, setCopied] = useState(false)
   const [confetti, setConfetti] = useState(false)
+  const [cleaning, setCleaning] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const knownPassedIds = useRef<Set<string>>(new Set())
   const params = useParams()
 
@@ -132,14 +143,48 @@ export default function JobPipelinePage() {
     })
   }
 
+  async function handleCleanup() {
+    setCleaning(true)
+    try {
+      const res = await fetch('/api/cleanup', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Cleanup failed')
+      const n = data.cleaned ?? 0
+      setToast(`Cleaned up ${n} incomplete screening${n === 1 ? '' : 's'}`)
+      await loadData()
+    } catch {
+      setToast('Cleanup failed. Please try again.')
+    } finally {
+      setCleaning(false)
+      setTimeout(() => setToast(null), 3500)
+    }
+  }
+
   return (
     <div className="p-6 sm:p-8">
       <Confetti active={confetti} />
 
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 bg-gray-900 dark:bg-slate-700 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg">
+          <Check size={15} className="text-green-400" />
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-7">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{job?.title || '—'}</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Candidate pipeline</p>
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{job?.title || '—'}</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Candidate pipeline</p>
+        </div>
+        <button
+          onClick={handleCleanup}
+          disabled={cleaning}
+          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Trash2 size={13} />
+          {cleaning ? 'Cleaning…' : 'Clean up incomplete'}
+        </button>
       </div>
 
       {/* Stats */}
@@ -226,11 +271,19 @@ export default function JobPipelinePage() {
                           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
                           <p className="text-xs text-gray-400 truncate">{c.email}</p>
                         </div>
-                        {screening?.total_score != null && (
+                        {screening?.total_score != null ? (
                           <ScoreBadge score={screening.total_score} />
-                        )}
+                        ) : c.status === 'in_progress' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />In Progress
+                          </span>
+                        ) : null}
                       </div>
-                      {screening?.summary && (
+                      {c.status === 'in_progress' ? (
+                        <p className="flex items-center gap-1 text-xs text-gray-400">
+                          <Clock size={11} /> Started {timeAgo(c.created_at)}
+                        </p>
+                      ) : screening?.summary && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{screening.summary}</p>
                       )}
                     </div>
