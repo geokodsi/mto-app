@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }, (payload: any) => {
         const c = payload.new
         if (!c || !jobIdsRef.current.has(c.job_id)) return
-        if (c.status === 'passed' || c.status === 'declined') {
+        if (c.status === 'passed' || c.status === 'declined' || c.status === 'booked') {
           const jobTitle = jobTitlesRef.current.get(c.job_id) || 'a job'
           setNotifs(prev => [{
             id: `${c.id}-${c.status}`,
@@ -162,6 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   function statusLabel(s: string) {
     if (s === 'passed') return '✅ passed'
     if (s === 'declined') return '❌ declined'
+    if (s === 'booked') return '📅 booked an interview'
     return '🔵 started screening'
   }
 

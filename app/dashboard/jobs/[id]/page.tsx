@@ -17,6 +17,10 @@ function timeAgo(dateString: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
+function formatInterview(ts: string) {
+  return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 const AVATAR_COLORS = [
   'bg-indigo-500', 'bg-purple-500', 'bg-pink-500',
   'bg-blue-500', 'bg-teal-500', 'bg-orange-500',
@@ -95,7 +99,7 @@ export default function JobPipelinePage() {
     setJob(jobData)
     const { data } = await supabase
       .from('candidates')
-      .select('*, screenings(*)')
+      .select('*, screenings(*), bookings(*)')
       .eq('job_id', params.id)
       .order('created_at', { ascending: false })
     const list = data || []
@@ -285,6 +289,11 @@ export default function JobPipelinePage() {
                         </p>
                       ) : screening?.summary && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{screening.summary}</p>
+                      )}
+                      {c.bookings?.[0]?.booked_slot && (
+                        <p className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-300 mt-1.5">
+                          <Calendar size={11} /> {formatInterview(c.bookings[0].booked_slot)}
+                        </p>
                       )}
                     </div>
                   )

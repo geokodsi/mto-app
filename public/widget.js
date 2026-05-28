@@ -99,7 +99,11 @@
     '#mto-send:hover{opacity:.88}',
     '#mto-send:disabled{opacity:.35;cursor:not-allowed}',
 
-    '#mto-end-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;gap:0;animation:mto-fade-in .4s ease-out}',
+    '#mto-end-screen,#mto-slots-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;gap:0;animation:mto-fade-in .4s ease-out;overflow-y:auto}',
+    '#mto-slots{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:18px}',
+    '.mto-slot-btn{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;background:#fff;border-radius:12px;font-size:13.5px;font-weight:600;color:#111;font-family:sans-serif;cursor:pointer;transition:border-color .15s,background .15s,color .15s}',
+    '.mto-slot-btn:hover{border-color:' + color + ';background:' + color + ';color:#fff}',
+    '.mto-slot-btn:disabled{opacity:.45;cursor:not-allowed}',
     '#mto-end-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;animation:mto-pop-in .5s cubic-bezier(.22,1,.36,1)}',
     '#mto-end-icon.passed{background:#ecfdf5}',
     '#mto-end-icon.declined{background:#f8fafc;font-size:38px}',
@@ -297,10 +301,114 @@
         body: JSON.stringify({ jobId: jobId, candidateId: candidateId, conversation: messages })
       });
       var data = await res.json();
-      showEndScreen(!!data.passed);
+      if (data.passed) {
+        showSlotPicker();
+      } else {
+        showEndScreen(false);
+      }
     } catch (e) {
       showEndScreen(false);
     }
+  }
+
+  function buildSlots() {
+    function at(daysAhead, hour) {
+      var d = new Date();
+      d.setDate(d.getDate() + daysAhead);
+      d.setHours(hour, 0, 0, 0);
+      return d;
+    }
+    return [at(1, 10), at(1, 14), at(2, 11)];
+  }
+
+  function formatSlot(d) {
+    var datePart = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    var timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return datePart + ' · ' + timePart;
+  }
+
+  function showSlotPicker() {
+    var inputArea = document.getElementById('mto-input-area');
+    if (inputArea) inputArea.style.display = 'none';
+
+    var label = document.getElementById('mto-progress-label');
+    var fill = document.getElementById('mto-progress-fill');
+    if (fill) fill.style.width = '100%';
+    if (label) label.textContent = 'Screening complete ✓';
+
+    var slots = buildSlots();
+    var wrap = document.createElement('div');
+    wrap.id = 'mto-slots-screen';
+    var html =
+      '<div id="mto-end-icon" class="passed">' +
+        '<svg class="mto-check-svg" viewBox="0 0 40 40"><path class="mto-check-path" d="M8 20 L16 28 L32 12"/></svg>' +
+      '</div>' +
+      '<p id="mto-end-title">You\'re through! 🎉</p>' +
+      '<p id="mto-end-sub">Great news — you passed the screening. Pick a time for your interview:</p>' +
+      '<div id="mto-slots">';
+    for (var i = 0; i < slots.length; i++) {
+      html += '<button class="mto-slot-btn" data-iso="' + slots[i].toISOString() + '">' + formatSlot(slots[i]) + '</button>';
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    var inputAreaRef = document.getElementById('mto-input-area');
+    modal.insertBefore(wrap, inputAreaRef);
+    setTimeout(spawnConfetti, 400);
+
+    var btns = wrap.querySelectorAll('.mto-slot-btn');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].addEventListener('click', function () {
+        bookSlot(this.getAttribute('data-iso'), this.textContent);
+      });
+    }
+  }
+
+  async function bookSlot(iso, timeLabel) {
+    var container = document.getElementById('mto-slots');
+    if (container) {
+      var btns = container.querySelectorAll('.mto-slot-btn');
+      for (var i = 0; i < btns.length; i++) btns[i].disabled = true;
+    }
+    try {
+      var res = await fetch(baseUrl + '/api/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId: candidateId, jobId: jobId, slot: iso })
+      });
+      if (!res.ok) throw new Error('booking failed');
+      showBookingConfirmed(timeLabel);
+    } catch (e) {
+      if (container) {
+        var btns2 = container.querySelectorAll('.mto-slot-btn');
+        for (var k = 0; k < btns2.length; k++) btns2[k].disabled = false;
+      }
+      var err = document.getElementById('mto-slot-err');
+      if (!err && container) {
+        err = document.createElement('p');
+        err.id = 'mto-slot-err';
+        err.style.cssText = 'color:#ef4444;font-size:12px;font-family:sans-serif;margin:10px 0 0';
+        err.textContent = 'Could not book that slot. Please try again.';
+        container.parentNode.appendChild(err);
+      }
+    }
+  }
+
+  function showBookingConfirmed(timeLabel) {
+    var slotsScreen = document.getElementById('mto-slots-screen');
+    if (slotsScreen) slotsScreen.remove();
+
+    var end = document.createElement('div');
+    end.id = 'mto-end-screen';
+    end.innerHTML =
+      '<div id="mto-end-icon" class="passed">' +
+        '<svg class="mto-check-svg" viewBox="0 0 40 40"><path class="mto-check-path" d="M8 20 L16 28 L32 12"/></svg>' +
+      '</div>' +
+      '<p id="mto-end-title">Interview booked! 🎉</p>' +
+      '<p id="mto-end-sub">Your interview is booked for ' + timeLabel + '. You will receive a confirmation email shortly.</p>';
+    var inputAreaRef = document.getElementById('mto-input-area');
+    modal.insertBefore(end, inputAreaRef);
+    setTimeout(spawnConfetti, 300);
   }
 
   async function handleInput() {

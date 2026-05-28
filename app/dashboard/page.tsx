@@ -2,7 +2,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
-import { Users, Briefcase, TrendingUp, Calendar, Plus, ArrowRight, Code2, Copy, Check } from 'lucide-react'
+import { Users, Briefcase, TrendingUp, Calendar, Plus, ArrowRight, Code2, Copy, Check, Clock } from 'lucide-react'
+
+function getInitials(name: string) {
+  return (name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
+}
+
+function isToday(ts: string) {
+  const d = new Date(ts)
+  const n = new Date()
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate()
+}
+
+function fmtTime(ts: string) {
+  return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+function fmtDayTime(ts: string) {
+  return new Date(ts).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
 
 function useCountUp(target: number, duration = 900) {
   const [value, setValue] = useState(0)
@@ -31,6 +49,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<{ full_name: string; company_name: string } | null>(null)
   const [stats, setStats] = useState({ jobs: 0, screened: 0, passed: 0, booked: 0 })
   const [jobList, setJobList] = useState<{ id: string; title: string }[]>([])
+  const [bookings, setBookings] = useState<any[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -80,12 +99,45 @@ export default function DashboardPage() {
       }
 
       setStats({ jobs: jobIds.length, screened, passed, booked })
+
+      const { data: bookingRows } = await supabase
+        .from('bookings')
+        .select('id, booked_slot, status, candidates(name), jobs(title)')
+        .gte('booked_slot', new Date().toISOString())
+        .order('booked_slot', { ascending: true })
+      setBookings(bookingRows || [])
+
       setLoading(false)
     }
     load()
   }, [])
 
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
+
+  const weekEnd = new Date()
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const todayBookings = bookings.filter(b => isToday(b.booked_slot))
+  const weekBookings = bookings.filter(b => !isToday(b.booked_slot) && new Date(b.booked_slot) <= weekEnd)
+
+  function bookingRow(b: any) {
+    const name = (b.candidates as any)?.name || 'Candidate'
+    const title = (b.jobs as any)?.title || ''
+    return (
+      <div key={b.id} className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+        <div className="w-9 h-9 bg-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+          {getInitials(name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{title}</p>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-pink-600 dark:text-pink-300 flex-shrink-0">
+          <Clock size={13} />
+          {isToday(b.booked_slot) ? fmtTime(b.booked_slot) : fmtDayTime(b.booked_slot)}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -133,6 +185,38 @@ export default function DashboardPage() {
               </div>
             )
           })}
+        </div>
+
+        {/* Upcoming interviews */}
+        <div className="mb-8 sm:mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar size={16} className="text-gray-400" />
+            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Upcoming interviews</h2>
+          </div>
+          {!loading && bookings.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-8 text-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500">No interviews booked yet</p>
+              <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Booked interviews from passed candidates will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {todayBookings.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-2 pl-1">Today</p>
+                  <div className="space-y-2.5">{todayBookings.map(bookingRow)}</div>
+                </div>
+              )}
+              {weekBookings.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-2 pl-1">This week</p>
+                  <div className="space-y-2.5">{weekBookings.map(bookingRow)}</div>
+                </div>
+              )}
+              {!loading && todayBookings.length === 0 && weekBookings.length === 0 && bookings.length > 0 && (
+                <p className="text-sm text-gray-400 dark:text-gray-500 pl-1">No interviews in the next 7 days.</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Quick actions */}
