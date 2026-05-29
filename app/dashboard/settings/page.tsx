@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import {
   User, Building2, Palette, Bell, Check, Upload, X,
-  Eye, ChevronRight, Loader2, AlertCircle,
+  Eye, ChevronRight, Loader2, AlertCircle, Mail, Send,
 } from 'lucide-react'
 
 // ─── types ────────────────────────────────────────────────────────────────────
@@ -22,16 +22,19 @@ interface Company {
   logo_url: string | null
   accent_color: string
   widget_greeting: string
+  resend_api_key: string | null
+  sending_email: string | null
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'company' | 'widget' | 'notifications'
+type TabId = 'profile' | 'company' | 'widget' | 'email' | 'notifications'
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'profile',       label: 'Profile',       icon: <User size={16} /> },
   { id: 'company',       label: 'Company',        icon: <Building2 size={16} /> },
   { id: 'widget',        label: 'Widget',         icon: <Palette size={16} /> },
+  { id: 'email',         label: 'Email',          icon: <Mail size={16} /> },
   { id: 'notifications', label: 'Notifications',  icon: <Bell size={16} /> },
 ]
 
@@ -179,7 +182,7 @@ export default function SettingsPage() {
         setProfile(p)
         const { data: c } = await supabase
           .from('companies')
-          .select('id, name, logo_url, accent_color, widget_greeting')
+          .select('id, name, logo_url, accent_color, widget_greeting, resend_api_key, sending_email')
           .eq('id', p.company_id)
           .single()
         if (c) setCompany(c)
@@ -252,6 +255,12 @@ export default function SettingsPage() {
           )}
           {tab === 'widget' && (
             <WidgetTab
+              company={company}
+              onSaved={(updated) => setCompany(c => c ? { ...c, ...updated } : c)}
+            />
+          )}
+          {tab === 'email' && (
+            <EmailTab
               company={company}
               onSaved={(updated) => setCompany(c => c ? { ...c, ...updated } : c)}
             />
@@ -577,6 +586,136 @@ function WidgetTab({
         <WidgetPreview color={color} greeting={greeting} />
       </Card>
     </div>
+  )
+}
+
+// ─── Email tab ────────────────────────────────────────────────────────────────
+
+function EmailTab({
+  company,
+  onSaved,
+}: {
+  company: Company
+  onSaved: (u: Partial<Company>) => void
+}) {
+  const [sendingEmail, setSendingEmail] = useState(company.sending_email ?? '')
+  const [apiKey, setApiKey] = useState(company.resend_api_key ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  async function handleTest() {
+    setTesting(true); setTestResult(null)
+    try {
+      const res = await fetch('/api/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, sendingEmail }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Test failed')
+      setTestResult({ ok: true, msg: `Test email sent to ${sendingEmail}. Check your inbox!` })
+    } catch (err: any) {
+      setTestResult({ ok: false, msg: err.message })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true); setError(''); setSaved(false)
+
+    const { error: err } = await supabase
+      .from('companies')
+      .update({
+        resend_api_key: apiKey || null,
+        sending_email: sendingEmail || null,
+      })
+      .eq('id', company.id)
+
+    if (err) {
+      setError(err.message)
+    } else {
+      onSaved({ resend_api_key: apiKey || null, sending_email: sendingEmail || null })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card title="Email sending" subtitle="Send candidate outreach from your own email address">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && <ErrorBanner msg={error} />}
+
+        {/* Instructions */}
+        <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900 rounded-xl px-4 py-3.5">
+          <Mail size={18} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">
+            <p className="font-semibold mb-1">Connect your own email in 3 steps</p>
+            <ol className="list-decimal list-inside space-y-0.5 text-indigo-800 dark:text-indigo-300">
+              <li>Create a free account at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-indigo-600">resend.com</a></li>
+              <li>Verify your domain in the Resend dashboard</li>
+              <li>Paste your API key below</li>
+            </ol>
+            <p className="mt-1.5 text-xs text-indigo-700 dark:text-indigo-400">
+              Outreach is sent from your account — we never send on your behalf or store emails elsewhere.
+            </p>
+          </div>
+        </div>
+
+        <Field label="Sending email address" hint="Must use a domain you've verified in Resend, e.g. hr@yourcompany.com">
+          <Input
+            type="email"
+            value={sendingEmail}
+            onChange={e => { setSendingEmail(e.target.value); setTestResult(null) }}
+            placeholder="hr@yourcompany.com"
+          />
+        </Field>
+
+        <Field label="Resend API key" hint="Found under “API Keys” in your Resend dashboard. Starts with “re_”.">
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={e => { setApiKey(e.target.value); setTestResult(null) }}
+            placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+            autoComplete="off"
+          />
+        </Field>
+
+        {/* Test result banner */}
+        {testResult && (
+          <div className={[
+            'flex items-start gap-2.5 text-sm px-4 py-3 rounded-xl border',
+            testResult.ok
+              ? 'bg-green-50 dark:bg-green-950 border-green-100 dark:border-green-900 text-green-700 dark:text-green-300'
+              : 'bg-red-50 dark:bg-red-950 border-red-100 dark:border-red-900 text-red-700 dark:text-red-300',
+          ].join(' ')}>
+            {testResult.ok
+              ? <Check size={16} className="flex-shrink-0 mt-0.5" />
+              : <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />}
+            {testResult.msg}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <SaveButton loading={saving} saved={saved} />
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testing || !apiKey || !sendingEmail}
+            className="inline-flex items-center gap-2 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          >
+            {testing ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+            {testing ? 'Sending…' : 'Test connection'}
+          </button>
+        </div>
+      </form>
+    </Card>
   )
 }
 

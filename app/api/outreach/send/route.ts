@@ -7,10 +7,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
-const FROM_ADDRESS = 'onboarding@resend.dev'
-
 export async function POST(req: NextRequest) {
   try {
     const { candidateId, jobId, subject, body } = await req.json()
@@ -26,6 +22,25 @@ export async function POST(req: NextRequest) {
     if (cErr || !candidate) {
       return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
     }
+
+    // Each client sends from their own email using their own Resend account —
+    // MTO never touches their emails. The company must connect their Resend
+    // credentials in Settings before any outreach can be sent.
+    const { data: company } = await supabase
+      .from('companies')
+      .select('resend_api_key, sending_email')
+      .eq('id', candidate.company_id)
+      .single()
+
+    if (!company?.resend_api_key || !company?.sending_email) {
+      return NextResponse.json(
+        { error: 'Please connect your email in Settings first' },
+        { status: 400 }
+      )
+    }
+
+    const resend = new Resend(company.resend_api_key)
+    const FROM_ADDRESS = company.sending_email
 
     // Attempt the actual send. Per spec, a failed send still records the
     // outreach_emails row — the error is logged and surfaced in the response.
