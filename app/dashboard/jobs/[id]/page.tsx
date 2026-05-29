@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../../../lib/supabase'
-import { useParams } from 'next/navigation'
-import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check, Clock, Trash2 } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
+import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check, Clock, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
@@ -91,8 +91,11 @@ export default function JobPipelinePage() {
   const [confetti, setConfetti] = useState(false)
   const [cleaning, setCleaning] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const knownPassedIds = useRef<Set<string>>(new Set())
   const params = useParams()
+  const router = useRouter()
 
   const loadData = useCallback(async () => {
     const { data: jobData } = await supabase.from('jobs').select('*').eq('id', params.id).single()
@@ -164,6 +167,27 @@ export default function JobPipelinePage() {
     }
   }
 
+  async function handleDelete() {
+    if (!job) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/jobs/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: params.id, companyId: job.company_id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      // Job is gone — leave the pipeline and return to the jobs list.
+      router.push('/dashboard/jobs')
+    } catch (err: any) {
+      setConfirmDelete(false)
+      setDeleting(false)
+      setToast(err.message || 'Could not delete job')
+      setTimeout(() => setToast(null), 3500)
+    }
+  }
+
   return (
     <div className="p-6 sm:p-8">
       <Confetti active={confetti} />
@@ -175,20 +199,72 @@ export default function JobPipelinePage() {
         </div>
       )}
 
+      {/* Delete confirmation dialog */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !deleting && setConfirmDelete(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-white">Delete &ldquo;{job?.title}&rdquo;?</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                    Are you sure you want to delete this job? This will also delete all candidates and screenings for this job. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-900 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? <><Loader2 size={15} className="animate-spin" /> Deleting…</> : <><Trash2 size={15} /> Delete job</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-7 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{job?.title || '—'}</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Candidate pipeline</p>
         </div>
-        <button
-          onClick={handleCleanup}
-          disabled={cleaning}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Trash2 size={13} />
-          {cleaning ? 'Cleaning…' : 'Clean up incomplete'}
-        </button>
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <button
+            onClick={handleCleanup}
+            disabled={cleaning}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 size={13} />
+            {cleaning ? 'Cleaning…' : 'Clean up incomplete'}
+          </button>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+          >
+            <Trash2 size={13} />
+            Delete job
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

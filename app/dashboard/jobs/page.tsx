@@ -1,35 +1,65 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import Link from 'next/link'
-import { Plus, Search, Briefcase, ArrowRight, ChevronRight } from 'lucide-react'
+import { Plus, Search, Briefcase, ChevronRight, Trash2, Loader2, AlertTriangle, Check } from 'lucide-react'
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [confirmJob, setConfirmJob] = useState<any | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .single()
-      if (profile) {
-        const { data } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('company_id', profile.company_id)
-          .order('created_at', { ascending: false })
-        setJobs(data || [])
-      }
-      setLoading(false)
+  const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+    if (profile) {
+      setCompanyId(profile.company_id)
+      const { data } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .order('created_at', { ascending: false })
+      setJobs(data || [])
     }
-    load()
+    setLoading(false)
   }, [])
+
+  useEffect(() => { load() }, [load])
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  async function handleDelete() {
+    if (!confirmJob || !companyId) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/jobs/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: confirmJob.id, companyId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      setConfirmJob(null)
+      showToast('Job deleted successfully')
+      await load()
+    } catch (err: any) {
+      showToast(err.message || 'Could not delete job')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const filtered = jobs.filter(j =>
     j.title.toLowerCase().includes(query.toLowerCase())
@@ -149,18 +179,78 @@ export default function JobsPage() {
                   <td className="px-6 py-4 hidden md:table-cell text-gray-600">{job.pass_threshold}%</td>
                   <td className="px-6 py-4 hidden lg:table-cell text-gray-400 text-xs">{formatDate(job.created_at)}</td>
                   <td className="px-6 py-4 text-right">
-                    <Link
-                      href={`/dashboard/jobs/${job.id}`}
-                      className="inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors group-hover:gap-2"
-                    >
-                      View pipeline
-                      <ChevronRight size={14} />
-                    </Link>
+                    <div className="flex items-center justify-end gap-4">
+                      <Link
+                        href={`/dashboard/jobs/${job.id}`}
+                        className="inline-flex items-center gap-1 text-indigo-600 text-xs font-medium hover:text-indigo-800 transition-colors group-hover:gap-2"
+                      >
+                        View pipeline
+                        <ChevronRight size={14} />
+                      </Link>
+                      <button
+                        onClick={() => setConfirmJob(job)}
+                        className="inline-flex items-center gap-1 text-red-600 text-xs font-medium hover:text-red-800 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {confirmJob && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !deleting && setConfirmJob(null)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} className="text-red-600" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-gray-900">Delete &ldquo;{confirmJob.title}&rdquo;?</h2>
+                  <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                    Are you sure you want to delete this job? This will also delete all candidates and screenings for this job. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmJob(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleting ? <><Loader2 size={15} className="animate-spin" /> Deleting…</> : <><Trash2 size={15} /> Delete job</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 bg-gray-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg">
+          <Check size={15} className="text-green-400" />
+          {toast}
         </div>
       )}
     </div>
