@@ -8,8 +8,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// The model often wraps its JSON in ```json fences or adds prose, which
+// breaks JSON.parse. Strip fences and fall back to the first {...} block.
+function extractJson(raw: string) {
+  let s = raw.trim()
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+  if (fence) s = fence[1].trim()
+  try {
+    return JSON.parse(s)
+  } catch {
+    const obj = s.match(/\{[\s\S]*\}/)
+    if (obj) return JSON.parse(obj[0])
+    throw new Error('No JSON object found in model response')
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { jobId, candidateId, conversation } = await req.json()
+  console.log('Score API called with:', { jobId, candidateId })
 
   const { data: job } = await supabase
     .from('jobs')
@@ -53,7 +69,7 @@ Return ONLY valid JSON:
   }
 
   try {
-    const result = JSON.parse(text)
+    const result = extractJson(text)
     const passed = result.total_score >= job.pass_threshold
 
     await supabase.from('screenings').insert({
@@ -70,7 +86,8 @@ Return ONLY valid JSON:
     }).eq('id', candidateId)
 
     return NextResponse.json({ ...result, passed })
-  } catch {
+  } catch (err) {
+    console.error('Score parse/save error:', err, '| raw text:', text)
     return NextResponse.json({ passed: false, total_score: 0, summary: 'Could not score' })
   }
 }

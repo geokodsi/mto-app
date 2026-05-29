@@ -294,6 +294,7 @@
   }
 
   async function scoreConversation() {
+    console.log('Calling score API with candidateId:', candidateId);
     try {
       var res = await fetch(baseUrl + '/api/score', {
         method: 'POST',
