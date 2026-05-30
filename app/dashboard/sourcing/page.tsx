@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import {
   Search, Copy, Check, Plus, X, Loader2, User,
-  ExternalLink, Sparkles, Bot
+  ExternalLink, Sparkles, Bot, FileUp
 } from 'lucide-react'
 
 interface Job {
@@ -125,6 +125,12 @@ export default function SourcingPage() {
 
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+
+  // Parse CV — upload a résumé and auto-fill a sourced candidate's profile
+  const cvInputRef = useRef<HTMLInputElement>(null)
+  const pendingCvId = useRef<string | null>(null)
+  const [parsingCvId, setParsingCvId] = useState<string | null>(null)
+  const [cvError, setCvError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -259,8 +265,81 @@ export default function SourcingPage() {
     setUpdatingStatus(null)
   }
 
+  // ---- Parse CV: upload a résumé, let Claude extract the profile, auto-fill ----
+  function triggerParseCv(candidateId: string) {
+    setCvError('')
+    pendingCvId.current = candidateId
+    cvInputRef.current?.click()
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const res = String(reader.result || '')
+        const comma = res.indexOf(',')
+        resolve(comma >= 0 ? res.slice(comma + 1) : res)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleCvSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const candidateId = pendingCvId.current
+    e.target.value = ''
+    pendingCvId.current = null
+    if (!file || !candidateId) return
+    if (!/\.(pdf|doc|docx)$/i.test(file.name)) {
+      setCvError('Please upload a PDF, DOC or DOCX file.')
+      return
+    }
+    setParsingCvId(candidateId)
+    setCvError('')
+    try {
+      const fileBase64 = await fileToBase64(file)
+      const res = await fetch('/api/sourcing/parse-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64, mediaType: file.type, fileName: file.name }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to parse CV')
+
+      const updates: Record<string, any> = {}
+      if (data.name) updates.name = data.name
+      if (data.headline) updates.headline = data.headline
+      if (Array.isArray(data.skills) && data.skills.length) updates.skills = data.skills
+      if (Object.keys(updates).length === 0) throw new Error('No details could be extracted from that CV')
+
+      const { data: updated, error } = await supabase
+        .from('sourced_candidates')
+        .update(updates)
+        .eq('id', candidateId)
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+
+      setCandidates(prev => prev.map(c => (c.id === candidateId ? { ...c, ...updated } : c)))
+    } catch (err: any) {
+      setCvError(err.message || 'Could not parse that CV')
+    } finally {
+      setParsingCvId(null)
+    }
+  }
+
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
+      {/* Hidden file input used by every row's "Parse CV" button */}
+      <input
+        ref={cvInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleCvSelected}
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
@@ -273,6 +352,12 @@ export default function SourcingPage() {
           Generate Boolean search strings and track sourced candidates for your open roles.
         </p>
       </div>
+
+      {cvError && (
+        <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 text-sm text-red-600 dark:text-red-400">
+          {cvError}
+        </div>
+      )}
 
       {/* Step 1: Job selector */}
       <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl p-6 shadow-sm mb-5">
@@ -539,21 +624,34 @@ export default function SourcingPage() {
                         </select>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {c.linkedin_url && (
-                            <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer"
-                              className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                            >
-                              <ExternalLink size={13} />
-                            </a>
-                          )}
-                          {c.github_url && (
-                            <a href={c.github_url} target="_blank" rel="noopener noreferrer"
-                              className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors"
-                            >
-                              <ExternalLink size={13} />
-                            </a>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => triggerParseCv(c.id)}
+                            disabled={parsingCvId === c.id}
+                            title="Parse a CV to auto-fill this candidate's name, headline and skills"
+                            className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {parsingCvId === c.id
+                              ? <Loader2 size={13} className="animate-spin" />
+                              : <FileUp size={13} />}
+                            {parsingCvId === c.id ? 'Parsing…' : 'Parse CV'}
+                          </button>
+                          <span className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {c.linkedin_url && (
+                              <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer"
+                                className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                              >
+                                <ExternalLink size={13} />
+                              </a>
+                            )}
+                            {c.github_url && (
+                              <a href={c.github_url} target="_blank" rel="noopener noreferrer"
+                                className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-slate-600 flex items-center justify-center text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-500 transition-colors"
+                              >
+                                <ExternalLink size={13} />
+                              </a>
+                            )}
+                          </span>
                         </div>
                       </td>
                     </tr>

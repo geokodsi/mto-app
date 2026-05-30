@@ -114,9 +114,31 @@
 
     '.mto-confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:mto-confetti-fall linear forwards;pointer-events:none}',
 
+    '#mto-choice-screen,#mto-analysing-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 22px;text-align:center;animation:mto-fade-in .4s ease-out;overflow-y:auto}',
+    '#mto-choice-intro{font-size:16px;font-weight:700;color:#111;margin:0 0 5px;font-family:sans-serif}',
+    '#mto-choice-sub{font-size:12.5px;color:#666;margin:0 0 20px;font-family:sans-serif;max-width:280px;line-height:1.5}',
+    '#mto-choice{display:flex;flex-direction:column;gap:12px;width:100%}',
+    '.mto-choice-btn{width:100%;padding:18px 16px;border-radius:16px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:sans-serif;transition:border-color .15s,background .15s,transform .1s,box-shadow .15s}',
+    '.mto-choice-btn:hover{border-color:' + color + ';box-shadow:0 4px 14px rgba(0,0,0,.06)}',
+    '.mto-choice-btn:active{transform:scale(.985)}',
+    '.mto-choice-emoji{font-size:30px;line-height:1}',
+    '.mto-choice-title{font-size:15px;font-weight:700;color:#111}',
+    '.mto-choice-hint{font-size:11.5px;color:#999}',
+    '.mto-choice-cv{border-color:' + color + ';background:' + color + '0d}',
+    '#mto-choice-err{color:#ef4444;font-size:12px;font-family:sans-serif;margin:14px 0 0;line-height:1.5}',
+    '#mto-cv-input{display:none}',
+    '.mto-spinner{width:48px;height:48px;border-radius:50%;border:4px solid #eee;border-top-color:' + color + ';animation:mto-spin .9s linear infinite;margin-bottom:20px}',
+    '@keyframes mto-spin{to{transform:rotate(360deg)}}',
+    '.mto-analysing-title{font-size:16px;font-weight:700;color:#111;font-family:sans-serif;margin:0 0 6px}',
+    '.mto-analysing-sub{font-size:12.5px;color:#666;font-family:sans-serif;margin:0}',
+    '.mto-analysing-steps{margin-top:18px;font-size:12px;color:#aaa;font-family:sans-serif;min-height:16px;animation:mto-fade-in .4s ease-out}',
+
     '@media(max-width:480px){#mto-modal{width:calc(100vw - 20px);right:10px;bottom:82px;max-height:72vh;border-radius:18px}',
     '#mto-btn{right:14px;bottom:14px;width:52px;height:52px}',
     '.mto-msg{font-size:14.5px;max-width:90%}',
+    '.mto-choice-btn{padding:22px 16px}',
+    '.mto-choice-emoji{font-size:34px}',
+    '.mto-choice-title{font-size:16px}',
     '#mto-input{font-size:16px}}'
   ].join('');
   document.head.appendChild(style);
@@ -253,6 +275,158 @@
 
     var inputAreaRef = document.getElementById('mto-input-area');
     modal.insertBefore(end, inputAreaRef);
+  }
+
+  // ---- CV upload / choice flow ----------------------------------------------
+  var cvInput = null;
+  var analysingTimer = null;
+
+  function ensureCvInput() {
+    if (cvInput) return cvInput;
+    cvInput = document.createElement('input');
+    cvInput.type = 'file';
+    cvInput.id = 'mto-cv-input';
+    cvInput.accept = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    cvInput.addEventListener('change', function () {
+      var f = cvInput.files && cvInput.files[0];
+      cvInput.value = '';
+      if (f) handleCvFile(f);
+    });
+    modal.appendChild(cvInput);
+    return cvInput;
+  }
+
+  function removeChoiceScreen() {
+    var s = document.getElementById('mto-choice-screen');
+    if (s) s.remove();
+  }
+
+  function showChoiceScreen(errorMsg) {
+    removeChoiceScreen();
+    removeAnalysing();
+    var inputArea = document.getElementById('mto-input-area');
+    if (inputArea) inputArea.style.display = 'none';
+
+    var label = document.getElementById('mto-progress-label');
+    var fill = document.getElementById('mto-progress-fill');
+    if (fill) fill.style.width = '0%';
+    if (label) label.textContent = 'Almost there';
+
+    var screen = document.createElement('div');
+    screen.id = 'mto-choice-screen';
+    screen.innerHTML =
+      '<p id="mto-choice-intro">How would you like to apply?</p>' +
+      '<p id="mto-choice-sub">Upload your CV for an instant result, or answer a few quick questions.</p>' +
+      '<div id="mto-choice">' +
+        '<button type="button" class="mto-choice-btn mto-choice-cv">' +
+          '<span class="mto-choice-emoji">📄</span>' +
+          '<span class="mto-choice-title">Upload your CV</span>' +
+          '<span class="mto-choice-hint">PDF, DOC or DOCX</span>' +
+        '</button>' +
+        '<button type="button" class="mto-choice-btn mto-choice-chat">' +
+          '<span class="mto-choice-emoji">💬</span>' +
+          '<span class="mto-choice-title">Answer questions instead</span>' +
+          '<span class="mto-choice-hint">Takes about 3 minutes</span>' +
+        '</button>' +
+      '</div>' +
+      (errorMsg ? '<p id="mto-choice-err">' + errorMsg + '</p>' : '');
+
+    var inputAreaRef = document.getElementById('mto-input-area');
+    modal.insertBefore(screen, inputAreaRef);
+
+    ensureCvInput();
+    screen.querySelector('.mto-choice-cv').addEventListener('click', function () {
+      ensureCvInput().click();
+    });
+    screen.querySelector('.mto-choice-chat').addEventListener('click', function () {
+      startQuestions();
+    });
+  }
+
+  async function startQuestions() {
+    removeChoiceScreen();
+    step = 'screening';
+    var inputArea = document.getElementById('mto-input-area');
+    if (inputArea) inputArea.style.display = 'flex';
+    setInputDisabled(false);
+    await sendToAI('Hello, my name is ' + candidateName + ' and my email is ' + candidateEmail + '. I am ready to start the screening.');
+  }
+
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var res = String(reader.result || '');
+        var comma = res.indexOf(',');
+        resolve(comma >= 0 ? res.slice(comma + 1) : res);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function removeAnalysing() {
+    if (analysingTimer) { clearInterval(analysingTimer); analysingTimer = null; }
+    var s = document.getElementById('mto-analysing-screen');
+    if (s) s.remove();
+  }
+
+  function showAnalysing(fileName) {
+    removeChoiceScreen();
+    removeAnalysing();
+    var inputArea = document.getElementById('mto-input-area');
+    if (inputArea) inputArea.style.display = 'none';
+
+    var label = document.getElementById('mto-progress-label');
+    if (label) label.textContent = 'Analysing your CV…';
+
+    var screen = document.createElement('div');
+    screen.id = 'mto-analysing-screen';
+    screen.innerHTML =
+      '<div class="mto-spinner"></div>' +
+      '<p class="mto-analysing-title">Analysing your CV…</p>' +
+      '<p class="mto-analysing-sub">' + (fileName ? ('Reading ' + fileName) : 'This usually takes a few seconds') + '</p>' +
+      '<p class="mto-analysing-steps" id="mto-analysing-steps">Extracting your experience…</p>';
+
+    var inputAreaRef = document.getElementById('mto-input-area');
+    modal.insertBefore(screen, inputAreaRef);
+
+    var steps = ['Extracting your experience…', 'Matching your skills…', 'Scoring against the role…', 'Almost done…'];
+    var i = 0;
+    analysingTimer = setInterval(function () {
+      i = (i + 1) % steps.length;
+      var el = document.getElementById('mto-analysing-steps');
+      if (el) el.textContent = steps[i];
+    }, 1600);
+  }
+
+  async function handleCvFile(file) {
+    if (!file) return;
+    if (!/\.(pdf|doc|docx)$/i.test(file.name)) {
+      showChoiceScreen('Please upload a PDF, DOC or DOCX file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showChoiceScreen('That file is too large (max 10MB).');
+      return;
+    }
+    showAnalysing(file.name);
+    try {
+      var base64 = await fileToBase64(file);
+      var res = await fetch(baseUrl + '/api/parse-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: jobId, candidateId: candidateId, fileBase64: base64, mediaType: file.type, fileName: file.name })
+      });
+      var data = await res.json();
+      removeAnalysing();
+      if (!res.ok) throw new Error(data.error || 'Could not analyse CV');
+      step = 'done';
+      if (data.passed) showSlotPicker(); else showEndScreen(false);
+    } catch (e) {
+      removeAnalysing();
+      showChoiceScreen('Sorry, we could not read that CV. Please try another file, or answer the questions instead.');
+    }
   }
 
   async function sendToAI(userMessage) {
@@ -427,7 +601,7 @@
       }, 320);
     } else if (step === 'email') {
       candidateEmail = text;
-      step = 'screening';
+      step = 'choose';
       setInputDisabled(true);
       showTyping();
       try {
@@ -439,10 +613,11 @@
         var data = await res.json();
         candidateId = data.id;
         removeTyping();
-        setInputDisabled(false);
-        await sendToAI('Hello, my name is ' + candidateName + ' and my email is ' + candidateEmail + '. I am ready to start the screening.');
+        addMessage('Perfect — thanks, ' + (candidateName.split(' ')[0] || candidateName) + '! One last thing 👇', 'ai');
+        setTimeout(function () { showChoiceScreen(); }, 550);
       } catch (e) {
         removeTyping();
+        step = 'email';
         addMessage('Sorry, something went wrong. Please refresh and try again.', 'ai');
       }
     } else {

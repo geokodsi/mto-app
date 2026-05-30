@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../../../lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
-import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check, Clock, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
+import { Users, TrendingUp, Calendar, ClipboardList, X, Copy, Check, Clock, Trash2, AlertTriangle, Loader2, Paperclip, GraduationCap } from 'lucide-react'
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'
@@ -348,7 +348,12 @@ export default function JobPipelinePage() {
                           {getInitials(c.name)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate flex items-center gap-1">
+                            <span className="truncate">{c.name}</span>
+                            {screening?.via_cv && (
+                              <Paperclip size={12} className="text-indigo-400 flex-shrink-0" aria-label="Screened via CV upload" />
+                            )}
+                          </p>
                           <p className="text-xs text-gray-400 truncate">{c.email}</p>
                         </div>
                         {screening?.total_score != null ? (
@@ -413,6 +418,38 @@ export default function JobPipelinePage() {
             <div className="p-6">
               {selected.screenings?.[0] ? (
                 <>
+                  {selected.screenings[0].via_cv && (
+                    <div className="mb-5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                        <Paperclip size={12} /> Screened via CV upload
+                      </span>
+                      {selected.screenings[0].years_experience != null && (
+                        <div className="flex items-center gap-2 mt-3.5 text-sm text-gray-600 dark:text-gray-400">
+                          <Clock size={14} className="text-gray-400 flex-shrink-0" />
+                          <span><span className="font-semibold text-gray-900 dark:text-white">{selected.screenings[0].years_experience}</span> years of experience</span>
+                        </div>
+                      )}
+                      {selected.screenings[0].education && (
+                        <div className="flex items-start gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          <GraduationCap size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                          <span>{selected.screenings[0].education}</span>
+                        </div>
+                      )}
+                      {Array.isArray(selected.screenings[0].skills) && selected.screenings[0].skills.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Skills</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selected.screenings[0].skills.map((skill: string, i: number) => (
+                              <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="bg-gray-50 dark:bg-slate-900 rounded-xl p-4 mb-5">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Score</span>
