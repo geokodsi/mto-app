@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
 import { LayoutDashboard, Briefcase, Settings, LogOut, Bell, Moon, Sun, X, SearchCheck, Mail } from 'lucide-react'
+import { WhatsAppIcon } from '../../components/WhatsAppIcon'
 
 interface Profile {
   full_name: string
@@ -152,11 +153,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  const navItems = [
+  const navItems: {
+    href: string
+    label: string
+    icon: React.ComponentType<any>
+    exact: boolean
+    iconColor?: string
+  }[] = [
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
     { href: '/dashboard/jobs', label: 'Jobs', icon: Briefcase, exact: false },
     { href: '/dashboard/sourcing', label: 'Sourcing', icon: SearchCheck, exact: false },
     { href: '/dashboard/outreach', label: 'Outreach', icon: Mail, exact: false },
+    { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: WhatsAppIcon, exact: false, iconColor: 'text-green-500' },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings, exact: false },
   ]
 
@@ -217,7 +225,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Icon size={17} />
+                <Icon size={17} className={item.iconColor} />
                 {item.label}
               </Link>
             )
