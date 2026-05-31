@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import Link from 'next/link'
-import { LayoutDashboard, Briefcase, Settings, LogOut, Bell, Moon, Sun, X, SearchCheck, Mail } from 'lucide-react'
+import { Home, Briefcase, Settings, LogOut, Bell, Moon, Sun, X, SearchCheck, Mail, MessageSquare, BarChart3 } from 'lucide-react'
 import { WhatsAppIcon } from '../../components/WhatsAppIcon'
 
 interface Profile {
@@ -160,11 +160,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     exact: boolean
     iconColor?: string
   }[] = [
-    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
+    { href: '/dashboard', label: 'Overview', icon: Home, exact: true },
     { href: '/dashboard/jobs', label: 'Jobs', icon: Briefcase, exact: false },
     { href: '/dashboard/sourcing', label: 'Sourcing', icon: SearchCheck, exact: false },
     { href: '/dashboard/outreach', label: 'Outreach', icon: Mail, exact: false },
+    { href: '/dashboard/screening', label: 'Screening', icon: MessageSquare, exact: false },
     { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: WhatsAppIcon, exact: false, iconColor: 'text-green-500' },
+    { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, exact: false },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings, exact: false },
   ]
 
